@@ -1,0 +1,14 @@
+{
+  "name": "moviebox-stream-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx wrangler dev --port 3000 --ip 0.0.0.0",
+    "deploy": "npx wrangler deploy",
+    "build": "echo 'No build required'",
+    "start": "npx wrangler dev --port 3000 --ip 0.0.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
