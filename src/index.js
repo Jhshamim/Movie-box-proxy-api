@@ -845,8 +845,22 @@ async function handleWatch(subjectId, params, request) {
 // ══════════════════════════════════════════════════════════════════
 
 async function handleProxy(params, request) {
-  const targetUrl = params.get("url");
-  if (!targetUrl) return json({ error: "url is required" }, 400);
+  let targetUrlStr = params.get("url");
+  if (!targetUrlStr) return json({ error: "url is required" }, 400);
+
+  try {
+    // If the user forgot to URL-encode their MP4 URL, the browser/cloudflare splits it at '&'.
+    // Re-attach any extra query params (e.g. &token=XYZ&expires=123) to the target URL.
+    const targetUrlObj = new URL(targetUrlStr);
+    for (const [key, value] of params.entries()) {
+      if (key !== "url") {
+        targetUrlObj.searchParams.append(key, value);
+      }
+    }
+    targetUrlStr = targetUrlObj.toString();
+  } catch (e) {
+    // If URL parsing fails, ignore and try the original string
+  }
 
   const domain = await discoverDomain();
 
@@ -863,7 +877,7 @@ async function handleProxy(params, request) {
   if (rangeHeader) cdnHeaders["Range"] = rangeHeader;
 
   try {
-    const vidResp = await fetch(targetUrl, {
+    const vidResp = await fetch(targetUrlStr, {
       headers: cdnHeaders,
       redirect: "follow",
     });
