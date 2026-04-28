@@ -567,10 +567,29 @@ async function handleLanguages(params) {
       const resolved = resolve(i);
       if (!resolved || typeof resolved !== "object" || Array.isArray(resolved)) continue;
 
-      if (resolved.subjectId && resolved.title && resolved.duration && !movieDict) {
-        movieDict = resolved;
-        break;
+      if (resolved.subjectId && resolved.title && (resolved.detailPath || resolved.slug || resolved.id)) {
+        // Prefer the one that matches our slug, or just grab the first one that has dubs/audios
+        if (resolved.detailPath === slug || String(resolved.subjectId) === slug) {
+           movieDict = resolved;
+           break;
+        }
+        // Fallback if we haven't found exactly yet
+        if (!movieDict && (resolved.dubs?.length > 0 || resolved.languages?.length > 0 || resolved.audios?.length > 0)) {
+           movieDict = resolved;
+        }
       }
+    }
+
+    if (!movieDict) {
+       // Just fallback to whatever has title and subjectId
+       for (let i = 0; i < nuxt.length; i++) {
+         const resolved = resolve(i);
+         if (!resolved || typeof resolved !== "object" || Array.isArray(resolved)) continue;
+         if (resolved.subjectId && resolved.title) {
+            movieDict = resolved;
+            break;
+         }
+       }
     }
 
     if (!movieDict) return json({ error: "Could not extract movie metadata" }, 404);
@@ -579,8 +598,8 @@ async function handleLanguages(params) {
       id: movieDict.subjectId,
       title: movieDict.title,
       detail_path: movieDict.detailPath || slug,
-      dubs: movieDict.dubs || [],
-      languages: movieDict.languages || [], // capturing original languages as well if any
+      dubs: movieDict.dubs || movieDict.languages || movieDict.audios || [], // Provide all found combinations
+      languages: movieDict.languages || [],
       audios: movieDict.audios || []
     });
   }
@@ -1009,4 +1028,4 @@ function json(body, status = 200) {
     status,
     headers: { "Content-Type": "application/json", ...CORS },
   });
-}
+    }
