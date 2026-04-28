@@ -1,0 +1,123 @@
+[
+  [
+    "ShallowReactive",
+    1
+  ],
+  {
+    "data": 2,
+    "state": 9,
+    "once": 36,
+    "_errors": 37,
+    "serverRendered": 14,
+    "path": 39
+  },
+  [
+    "ShallowReactive",
+    3
+  ],
+  {
+    "$fjK84G3iE41ZgqBtChzlXS8mQra8s1Y0Juxt2aRiVF6g": 4
+  },
+  {
+    "code": 5,
+    "message": 6,
+    "data": 7
+  },
+  0,
+  "ok",
+  {
+    "title": 8,
+    "keywords": 8,
+    "description": 8,
+    "h1": 8,
+    "imageUrl": 8
+  },
+  "",
+  [
+    "Reactive",
+    10
+  ],
+  {
+    "$sseoTdkMeta": 7,
+    "$si18n:cached-locale-configs": 11,
+    "$si18n:resolved-locale": 8,
+    "$sresData": 27,
+    "$senvironment": 28,
+    "$senvConfig": 29,
+    "$sutmSource": 8,
+    "$sshowNotFound": 34,
+    "$scountryCode": 35,
+    "$schatVisible": 34
+  },
+  {
+    "en": 12,
+    "ar": 15,
+    "fr": 17,
+    "id": 19,
+    "hi": 21,
+    "ur": 23,
+    "fil": 25
+  },
+  {
+    "fallbacks": 13,
+    "cacheable": 14
+  },
+  [],
+  true,
+  {
+    "fallbacks": 16,
+    "cacheable": 14
+  },
+  [],
+  {
+    "fallbacks": 18,
+    "cacheable": 14
+  },
+  [],
+  {
+    "fallbacks": 20,
+    "cacheable": 14
+  },
+  [],
+  {
+    "fallbacks": 22,
+    "cacheable": 14
+  },
+  [],
+  {
+    "fallbacks": 24,
+    "cacheable": 14
+  },
+  [],
+  {
+    "fallbacks": 26,
+    "cacheable": 14
+  },
+  [],
+  {},
+  "prod",
+  {
+    "APP_ENV": 28,
+    "BASE_URL": 30,
+    "SERVER_BASE_URL": 31,
+    "VITE_IMG_HOST": 32,
+    "VITE_SITE_HOST": 33
+  },
+  "https://h5-api.aoneroom.com",
+  "http://wefeed-h5api-bff.wefeed-prod",
+  "https://h5-static.aoneroom.com",
+  "https://h5.aoneroom.com",
+  false,
+  null,
+  [
+    "Set"
+  ],
+  [
+    "ShallowReactive",
+    38
+  ],
+  {
+    "$fjK84G3iE41ZgqBtChzlXS8mQra8s1Y0Juxt2aRiVF6g": 35
+  },
+  "/downloadApp"
+]

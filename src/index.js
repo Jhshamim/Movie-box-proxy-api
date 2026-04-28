@@ -86,6 +86,8 @@ export default {
       m = p.match(/^\/episodes\/(.+)$/);
       if (m) return handleEpisodes(decodeURIComponent(m[1]));
 
+      if (p === "/api/languages") return handleLanguages(url.searchParams);
+
       // ── Streaming ─────────────────────────────────────────
       m = p.match(/^\/api\/stream\/(\d+)$/);
       if (m) return handleStreamApi(m[1], url.searchParams);
@@ -148,6 +150,7 @@ function handleRoot() {
       detail: {
         "/detail/{slug}": "Get full metadata, cast, seasons, streams",
         "/episodes/{slug}": "Get episode list and counts for all seasons",
+        "/api/languages?id={slug}": "Get languages/dubs information",
       },
       streaming: {
         "/api/stream/{subject_id}?detail_path=...": "Get raw stream URLs (JSON)",
@@ -498,6 +501,89 @@ async function handleSearch(params) {
   }));
 
   return json({ query: q, count: movies.length, movies });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GET /api/languages?id={slug}  — extract languages/dubs
+// ══════════════════════════════════════════════════════════════════
+
+async function handleLanguages(params) {
+  const slug = params.get("id");
+  if (!slug) return json({ error: "id parameter is required" }, 400);
+
+  const pageUrl = `${BASE_URL}/moviedetail/${slug}`;
+  const resp = await fetch(pageUrl, {
+    headers: { "User-Agent": UA },
+    redirect: "follow",
+  });
+  if (!resp.ok) return json({ error: "Movie not found" }, 404);
+  const html = await resp.text();
+
+  const match = html.match(/<script[^>]+id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match) {
+    // Fallback to detail URL if moviedetail didn't have NUXT
+    const fallbackUrl = `${BASE_URL}/detail/${slug}`;
+    const fallbackResp = await fetch(fallbackUrl, {
+      headers: { "User-Agent": UA },
+      redirect: "follow",
+    });
+    if (fallbackResp.ok) {
+      const fallbackHtml = await fallbackResp.text();
+      const fallbackMatch = fallbackHtml.match(/<script[^>]+id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (fallbackMatch) {
+         return parseAndExtractLanguages(fallbackMatch[1]);
+      }
+    }
+    return json({ error: "Could not find NUXT data" }, 500);
+  }
+
+  return parseAndExtractLanguages(match[1]);
+
+  function parseAndExtractLanguages(nuxtRaw) {
+    let nuxt;
+    try {
+      nuxt = JSON.parse(nuxtRaw);
+    } catch {
+      return json({ error: "Failed to parse NUXT data" }, 500);
+    }
+    if (!Array.isArray(nuxt)) return json({ error: "Unexpected NUXT format" }, 500);
+
+    // Resolve NUXT references
+    function resolve(index) {
+      if (typeof index !== "number" || index < 0 || index >= nuxt.length) return index;
+      const val = nuxt[index];
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const out = {};
+        for (const [k, v] of Object.entries(val)) out[k] = resolve(v);
+        return out;
+      }
+      if (Array.isArray(val)) return val.map(resolve);
+      return val;
+    }
+
+    let movieDict = null;
+
+    for (let i = 0; i < nuxt.length; i++) {
+      const resolved = resolve(i);
+      if (!resolved || typeof resolved !== "object" || Array.isArray(resolved)) continue;
+
+      if (resolved.subjectId && resolved.title && resolved.duration && !movieDict) {
+        movieDict = resolved;
+        break;
+      }
+    }
+
+    if (!movieDict) return json({ error: "Could not extract movie metadata" }, 404);
+
+    return json({
+      id: movieDict.subjectId,
+      title: movieDict.title,
+      detail_path: movieDict.detailPath || slug,
+      dubs: movieDict.dubs || [],
+      languages: movieDict.languages || [], // capturing original languages as well if any
+      audios: movieDict.audios || []
+    });
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
