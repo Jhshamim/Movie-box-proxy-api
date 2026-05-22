@@ -296,12 +296,14 @@ async function fetchCategoryData(category) {
   const filterType = typeMap[category] || category;
 
   const resp = await fetch(
-    `${H5_API}/wefeed-h5api-bff/subject/filter?type=${filterType}&page=1&perPage=60`,
+    `${H5_API}/wefeed-h5api-bff/subject/filter`,
     {
+      method: "POST",
       headers: {
         "User-Agent": UA,
-        accept: "application/json",
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({ type: filterType, page: 1, perPage: 30 }),
     }
   );
 
@@ -381,33 +383,77 @@ async function handleCategorySectionByName(category, name) {
 // ══════════════════════════════════════════════════════════════════
 
 async function fetchRankingData() {
-  const resp = await fetch(
-    `${H5_API}/wefeed-h5api-bff/subject/rank-list`,
-    { headers: { "User-Agent": UA, accept: "application/json" } }
-  );
-  if (!resp.ok) throw new Error(`Ranking API returned ${resp.status}`);
-  const body = await resp.json();
-  const lists = body?.data || [];
+  const pageUrl = `https://moviebox.ph/ranking-list`;
+  const htmlResp = await fetch(pageUrl, { headers: { "User-Agent": UA } });
+  if (!htmlResp.ok) throw new Error(`Failed to load ranking page: ${htmlResp.status}`);
+  const html = await htmlResp.text();
+
+  const match = html.match(/<script[^>]+id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match) throw new Error("Could not find NUXT data on ranking page");
+
+  let nuxt;
+  try {
+    nuxt = JSON.parse(match[1]);
+  } catch (e) {
+    throw new Error("Failed to parse NUXT data");
+  }
+
+  function resolve(index) {
+    if (typeof index !== "number" || index < 0 || index >= nuxt.length) return index;
+    const val = nuxt[index];
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const out = {};
+      for (const [k, v] of Object.entries(val)) out[k] = resolve(v);
+      return out;
+    }
+    if (Array.isArray(val)) return val.map(resolve);
+    return val;
+  }
+
+  let rankingList = [];
+  for (let i = 0; i < nuxt.length; i++) {
+    const resolved = resolve(i);
+    if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) {
+      if (resolved.rankingList && Array.isArray(resolved.rankingList)) {
+        rankingList = resolved.rankingList;
+        break;
+      }
+    }
+  }
+
+  if (!rankingList.length) throw new Error("No ranking list found in NUXT");
 
   const sections = [];
-  for (const list of Array.isArray(lists) ? lists : [lists]) {
-    const title = list.title || "Most Watched";
-    const items = list.items || list.subjects || [];
-    const movies = items.map((s, i) => ({
+  for (const tab of rankingList) {
+    if (!tab.id) continue;
+    
+    // Now fetch the content for each tab
+    const contentResp = await fetch(
+      `${H5_API}/wefeed-h5api-bff/ranking-list/content?id=${tab.id}&page=1&perPage=30`,
+      { headers: { "User-Agent": UA, "accept": "application/json" } }
+    );
+    
+    if (!contentResp.ok) continue;
+    const body = await contentResp.json();
+    const items = body?.data?.subjectList || [];
+
+    const movies = items.map((s, idx) => ({
       name: s.title || s.name || "",
       poster_url: s.cover?.url || null,
       url: s.detailPath ? `${BASE_URL}/detail/${s.detailPath}` : null,
       slug: s.detailPath || null,
-      rank: String(i + 1),
+      rank: String(idx + 1),
       badge: s.corner || null,
     }));
+
     sections.push({
-      section: title,
+      section: tab.name,
       more_url: null,
       count: movies.length,
-      movies,
+      movies: movies.filter((m) => !!m.slug),
     });
   }
+
   return sections;
 }
 
